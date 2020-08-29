@@ -1,3 +1,5 @@
+Just for measuring startup times.
+
 2020.08.24 - GNU nano 5.2 "Ranrapalca"
 • Making certain replacements after a large paste does not crash.
 • Hitting a toggle at the Search prompt does not clear the answer.
