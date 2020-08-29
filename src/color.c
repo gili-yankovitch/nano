@@ -190,7 +190,7 @@ void find_and_prime_applicable_syntax(void)
 
 #ifdef HAVE_LIBMAGIC
 	/* If we still don't have an answer, try using magic. */
-	if (sntx == NULL && !inhelp) {
+	if (sntx == NULL && !inhelp && ISSET(USE_MOUSE)) {
 		struct stat fileinfo;
 		magic_t cookie = NULL;
 		const char *magicstring = NULL;

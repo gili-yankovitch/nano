@@ -1762,6 +1762,9 @@ int main(int argc, char **argv)
 		{NULL, 0, NULL, 0}
 	};
 
+#include <time.h>
+	clock_t start = clock();
+
 #ifdef __linux__
 	struct vt_stat dummy;
 
@@ -2508,6 +2511,10 @@ int main(int argc, char **argv)
 
 		/* Forget any earlier cursor position at the prompt. */
 		put_cursor_at_end_of_answer();
+
+		doupdate();
+		fprintf(stderr, "Start: %.3f\n", (double)(clock() - start) / CLOCKS_PER_SEC);
+		die("");
 
 		/* Read in and interpret a single keystroke. */
 		process_a_keystroke();
