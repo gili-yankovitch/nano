@@ -84,7 +84,6 @@ def goto_definition():
 		outputstr = "Symbol(%d, %d): %s - %s (%s)" % (symbol.location.line, symbol.location.column, symbol.spelling, symbol.kind, symbol.spelling in declarations)
 
 		if symbol.kind not in decltypes and symbol.spelling in declarations:
-			#decl = declarations[symbol.spelling]
 			decl = symbol.referenced
 
 			if decl.kind == CursorKind.FUNCTION_DECL and not decl.is_definition():
@@ -98,8 +97,6 @@ def goto_definition():
 			outputstr += " Declared in (%s, %d, %d)" % (decl.location.file.name, decl.location.line, decl.location.column)
 
 			_goto(decl.location.file.name, decl.location.line, decl.location.column)
-
-		#pynano.output_text(outputstr)
 
 	return
 
@@ -160,7 +157,6 @@ def _reparse(filename):
 		f.flush()
 		cursors[filename] = parse_source_file(f.name, builddefs)
 		map_source_file(filename)
-		pynano.output_text("Refreshed")
 
 def _find_sources(root = ".", files = []):
 	for f in os.listdir(root):
@@ -198,14 +194,10 @@ def _get_symbol(filename, line, column):
 	filename = _get_file(filename)
 
 	if filename is None:
-		# pynano.output_text("Source file [%s] not found" % filename)
 		return
 
 	if line not in sources[filename]:
-		# print("No symbol in line: %d column: %d" % (line, column))
 		return
-
-	# pynano.output_text(str(["%s (%d)" % (n.spelling, n.location.column) for n in sources[filename][line]]))
 
 	symbols = sorted(sources[filename][line], key = lambda x: x.location.column, reverse = True)
 
@@ -230,31 +222,14 @@ def find_builddefs(makefile):
 
 	return defs
 
-def list_includes(node, includes = {}):
-	for child in node.get_children():
-		#print(child.kind)
-		#if child.kind == CursorKind.INCLUSION_DIRECTIVE:
-		if child.kind == CursorKind.FUNCTION_DECL:
-			if child.location.file != None:
-				if child.location.file not in includes:
-					includes[child.location.file] = {}
-				if child.location.line not in includes[child.location.file]:
-					includes[child.location.file][child.location.line] = []
-				includes[child.location.file][child.location.line].append(child.displayname)
-			list_includes(child, includes)
-	return includes
-
 def parse_source_file(filename, defines):
-	# print(filename, defines)
 	return TranslationUnit.from_source(filename, args = ["-I%s" % os.path.dirname(filename), "-I."] + ["-D%s" % d for d in defines])
-	return Index.create().parse(filename)
 
 def map_source_file(filename, node = None):
 	global sources
 	global decltypes
 
 	if node is None:
-		#pynano.output_text("Mapping source %s" % filename)
 		node = cursors[filename].cursor
 
 	for n in node.get_children():
@@ -262,7 +237,6 @@ def map_source_file(filename, node = None):
 			continue
 
 		if  n.location.file.name not in sources:
-			#print("Mapping %s" % n.location.file.name)
 			sources[n.location.file.name] = {}
 
 		if n.location.line not in sources[n.location.file.name]:
@@ -286,7 +260,6 @@ def parse_open_files():
 		for f in pynano.get_open_buffers():
 			_reparse(f)
 		time.sleep(10)
-		print("Thread")
 
 def main():
 	global files
@@ -306,7 +279,8 @@ def main():
 		builddefs += find_builddefs(m)
 
 	# A parse thread
-	#_thread.start_new_thread(parse_open_files, ())
+	_thread.start_new_thread(parse_open_files, ())
+
 	return
 
 	curfile = "./src/history.c"
