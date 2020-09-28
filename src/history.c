@@ -20,7 +20,7 @@
  **************************************************************************/
 
 #include "prototypes.h"
-
+//#define ENABLE_HISTORIES
 #ifdef ENABLE_HISTORIES
 
 #include <errno.h>
@@ -47,6 +47,12 @@ static poshiststruct *position_history = NULL;
  * and the list of historical executed commands. */
 void history_init(void)
 {
+#ifdef ENABLE_PLUGINS
+	plugins_history = make_new_node(NULL);
+	plugins_history->data = copy_of("");
+	plugintop = plugins_history;
+	pluginbot = plugins_history;
+#endif
 	search_history = make_new_node(NULL);
 	search_history->data = copy_of("");
 	searchtop = search_history;
@@ -81,7 +87,6 @@ linestruct *find_history(const linestruct *start, const linestruct *end,
 		const char *text, size_t len)
 {
 	const linestruct *item;
-
 	for (item = start; item != end->prev && item != NULL; item = item->prev) {
 		if (strncmp(item->data, text, len) == 0)
 			return (linestruct *)item;
@@ -106,7 +111,12 @@ void update_history(linestruct **item, const char *text)
 		htop = &executetop;
 		hbot = &executebot;
 	}
-
+#ifdef ENABLE_PLUGINS
+	else if (*item == plugins_history) {
+		htop = &plugintop;
+		hbot = &pluginbot;
+	}
+#endif
 	/* See if the string is already in the history. */
 	thesame = find_history(*hbot, *htop, text, HIGHEST_POSITIVE);
 

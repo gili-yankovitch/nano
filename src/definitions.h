@@ -45,6 +45,10 @@
 #include <sys/param.h>
 #endif
 
+#ifdef ENABLE_PLUGINS
+#include <Python.h>
+#endif
+
 /* Suppress warnings for __attribute__((warn_unused_result)). */
 #define IGNORE_CALL_RESULT(call)  do { if (call) {} } while(0)
 
@@ -431,6 +435,10 @@ typedef struct keystruct {
 		/* The menus in which this keystroke is bound. */
 	void (*func)(void);
 		/* The function to which this keystroke is bound. */
+#ifdef ENABLE_PLUGINS
+	PyObject * pyfunc;
+		/* The python function bound to this shortcut */
+#endif
 #ifndef NANO_TINY
 	int toggle;
 		/* If a toggle, what we're toggling. */
@@ -442,6 +450,7 @@ typedef struct keystruct {
 	char *expansion;
 		/* The string of keycodes to which this shortcut is expanded. */
 #endif
+
 	struct keystruct *next;
 		/* Next in the list. */
 } keystruct;
@@ -563,6 +572,7 @@ enum
 #define MYESNO          (1<<13)
 #define MLINTER         (1<<14)
 #define MFINDINHELP     (1<<15)
+#define MPLUGINS		(1<<16)
 /* This is an abbreviation for all menus except Help and Browser and YesNo. */
 #define MMOST  (MMAIN|MWHEREIS|MREPLACE|MREPLACEWITH|MGOTOLINE|MWRITEFILE|MINSERTFILE|\
                 MEXECUTE|MWHEREISFILE|MGOTODIR|MFINDINHELP|MSPELL|MLINTER)

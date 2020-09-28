@@ -42,6 +42,11 @@
 #include <sys/vt.h>
 #endif
 
+#ifdef ENABLE_PLUGINS
+#include <Python.h>
+#endif
+
+
 #ifdef ENABLE_MULTIBUFFER
 #define read_them_all  TRUE
 #else
@@ -1650,6 +1655,13 @@ void process_a_keystroke(void)
 #endif
 
 	/* Execute the function of the shortcut. */
+#ifdef ENABLE_PLUGINS
+	if (shortcut->pyfunc)
+	{
+		PyObject_CallFunction(shortcut->pyfunc, NULL);
+	}
+	else
+#endif
 	shortcut->func();
 
 #ifndef NANO_TINY
@@ -2154,6 +2166,12 @@ int main(int argc, char **argv)
 #ifdef ENABLE_SPELLER
 		alt_speller = NULL;
 #endif
+
+#ifdef ENABLE_PLUGINS
+	fprintf(stderr, "Enabling plugins...\n");
+	plugins_init();
+#endif
+
 		/* Now process the system's and the user's nanorc file, if any. */
 		do_rcfiles();
 

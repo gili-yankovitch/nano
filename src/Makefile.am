@@ -34,6 +34,7 @@ nano_SOURCES = \
 		history.c \
 		move.c \
 		nano.c \
+		plugins.c \
 		prompt.c \
 		rcfile.c \
 		search.c \

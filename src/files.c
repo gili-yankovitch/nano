@@ -544,6 +544,31 @@ void redecorate_after_switch(void)
 	mention_name_and_linecount();
 }
 
+#ifdef ENABLE_PLUGINS
+
+int switch_to_open_buffer(char * buffer_name)
+{
+	openfilestruct * head = openfile;
+	openfilestruct * searcher = head;
+
+	do
+	{
+		if (!strcmp(buffer_name, searcher->filename) || !strcmp(basename(buffer_name), basename(searcher->filename)))
+		{
+			openfile = searcher;
+			redecorate_after_switch();
+			return 0;
+		}
+
+		searcher = searcher->next;
+	}
+	while (searcher != head);
+
+	return -1;
+}
+
+#endif /* ENABLE_PLUGINS */
+
 /* Switch to the previous entry in the list of open files. */
 void switch_to_prev_buffer(void)
 {

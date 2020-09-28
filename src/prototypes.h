@@ -20,6 +20,10 @@
 
 #include "definitions.h"
 
+#ifdef ENABLE_PLUGINS
+#include <Python.h>
+#endif
+
 /* All external variables.  See global.c for their descriptions. */
 
 #ifndef NANO_TINY
@@ -150,10 +154,17 @@ extern keystruct *sclist;
 extern funcstruct *allfuncs;
 extern funcstruct *exitfunc;
 
+#ifdef ENABLE_PLUGINS
+extern linestruct *plugins_history;
+#endif
 extern linestruct *search_history;
 extern linestruct *replace_history;
 extern linestruct *execute_history;
 #ifdef ENABLE_HISTORIES
+#ifdef ENABLE_PLUGINS
+extern linestruct *plugintop;
+extern linestruct *pluginbot;
+#endif
 extern linestruct *searchtop;
 extern linestruct *searchbot;
 extern linestruct *replacetop;
@@ -274,6 +285,16 @@ bool open_buffer(const char *filename, bool new_one);
 void set_modified(void);
 void prepare_for_display(void);
 #ifdef ENABLE_MULTIBUFFER
+
+#ifdef ENABLE_PLUGINS
+void add_to_sclist(int menus, const char *scstring, const int keycode,
+						void (*func)(void), int toggle);
+void add_to_sclist_py(int menus, const char *scstring, const int keycode,
+						PyObject * func, int toggle);
+
+int switch_to_open_buffer(char * buffer_name);
+#endif
+
 void mention_name_and_linecount(void);
 void switch_to_prev_buffer(void);
 void switch_to_next_buffer(void);
@@ -455,6 +476,13 @@ bool regexp_init(const char *regexp);
 void tidy_up_after_search(void);
 int findnextstr(const char *needle, bool whole_word_only, int modus,
 		size_t *match_len, bool skipone, const linestruct *begin, size_t begin_x);
+#ifdef ENABLE_PLUGINS
+void plugins_init(void);
+void print_init_strings();
+void load_one_plugin(char * plugin_name);
+void do_plugins(void);
+void print_output(char * output);
+#endif
 void do_search_forward(void);
 void do_search_backward(void);
 void do_findprevious(void);

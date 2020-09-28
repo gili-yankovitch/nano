@@ -963,11 +963,9 @@ void parse_one_include(char *file, syntaxtype *syntax)
 	lineno = was_lineno;
 }
 
-/* Expand globs in the passed name, and parse the resultant files. */
-void parse_includes(char *ptr)
+static int get_rc_filepath(char * ptr, glob_t * files)
 {
 	char *pattern, *expanded;
-	glob_t files;
 	int result;
 
 	check_for_nonempty_syntax();
@@ -979,18 +977,39 @@ void parse_includes(char *ptr)
 
 	/* Expand a tilde first, then try to match the globbing pattern. */
 	expanded = real_dir_from_tilde(pattern);
-	result = glob(expanded, GLOB_ERR, NULL, &files);
+	result = glob(expanded, GLOB_ERR, NULL, files);
+
+	free(expanded);
+
+	if ((result != 0) && (result != GLOB_NOMATCH))
+		jot_error(N_("Error expanding %s: %s"), pattern, strerror(errno));
+
+	return result;
+}
+
+#ifdef ENABLE_PLUGINS
+
+void parse_plugins(char *ptr)
+{
+	load_one_plugin(ptr);
+}
+
+#endif
+
+/* Expand globs in the passed name, and parse the resultant files. */
+void parse_includes(char *ptr)
+{
+	glob_t files;
+	int result = get_rc_filepath(ptr, &files);
 
 	/* If there are matches, process each of them.  Otherwise, only
 	 * report an error if it's something other than zero matches. */
 	if (result == 0) {
 		for (size_t i = 0; i < files.gl_pathc; ++i)
 			parse_one_include(files.gl_pathv[i], NULL);
-	} else if (result != GLOB_NOMATCH)
-		jot_error(N_("Error expanding %s: %s"), pattern, strerror(errno));
+	}
 
 	globfree(&files);
-	free(expanded);
 }
 
 const char hues[9][7] = { "pink", "purple", "mauve", "lagoon", "mint",
@@ -1452,6 +1471,7 @@ void parse_rcfile(FILE *rcstream, bool just_syntax, bool intros_only)
 								strcmp(keyword, "bind") == 0 ||
 								strcmp(keyword, "unbind") == 0 ||
 								strcmp(keyword, "include") == 0 ||
+								strcmp(keyword, "plugin") == 0 ||
 								strcmp(keyword, "extendsyntax") == 0)) {
 			if (intros_only)
 				jot_error(N_("Command \"%s\" not allowed in included file"),
@@ -1474,6 +1494,10 @@ void parse_rcfile(FILE *rcstream, bool just_syntax, bool intros_only)
 			;
 		else if (strcmp(keyword, "include") == 0)
 			parse_includes(ptr);
+#ifdef ENABLE_PLUGINS
+		else if (strcmp(keyword, "plugin") == 0)
+			parse_plugins(ptr);
+#endif
 		else
 #endif /* ENABLE_COLOR */
 		if (strcmp(keyword, "set") == 0)

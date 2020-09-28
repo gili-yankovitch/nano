@@ -809,17 +809,20 @@ void do_gotolinecolumn(ssize_t line, ssize_t column, bool retain_answer,
 			column = openfile->placewewant + 1;
 	}
 
+	//fprintf(stderr, "Coords: %ld, %ld\n", line, column);
 	/* Take a negative line number to mean: from the end of the file. */
 	if (line < 0)
 		line = openfile->filebot->lineno + line + 1;
 	if (line < 1)
 		line = 1;
 
+	//fprintf(stderr, "Coords: %ld, %ld\n", line, column);
 	/* Iterate to the requested line. */
 	for (openfile->current = openfile->filetop; line > 1 &&
 				openfile->current != openfile->filebot; line--)
-		openfile->current = openfile->current->next;
-
+	{		openfile->current = openfile->current->next;
+	}
+	//fprintf(stderr, "Coords: %ld, %ld\n", line, column);
 	/* Take a negative column number to mean: from the end of the line. */
 	if (column < 0)
 		column = breadth(openfile->current->data) + column + 2;

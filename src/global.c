@@ -213,6 +213,11 @@ funcstruct *tailfunc;
 funcstruct *exitfunc;
 		/* A pointer to the special Exit/Close item. */
 
+#ifdef ENABLE_PLUGINS
+linestruct *plugins_history = NULL;
+		/* The current item in the list of strings that were used in plugins */
+#endif
+
 linestruct *search_history = NULL;
 		/* The current item in the list of strings that were searched for. */
 linestruct *execute_history = NULL;
@@ -220,6 +225,11 @@ linestruct *execute_history = NULL;
 linestruct *replace_history = NULL;
 		/* The current item in the list of replace strings. */
 #ifdef ENABLE_HISTORIES
+#ifdef ENABLE_PLUGINS
+linestruct *plugintop = NULL;
+linestruct *pluginbot = NULL;
+#endif
+
 linestruct *searchtop = NULL;
 		/* The oldest item in the list of search strings. */
 linestruct *searchbot = NULL;
@@ -420,10 +430,87 @@ int keycode_from_string(const char *keystring)
 		return -1;
 }
 
+#ifdef ENABLE_PLUGINS
+
+static void _add_to_sclist_front(keystruct * sc)
+{
+	/* Start the list, or tack on the next item. */
+	if (sclist != NULL)
+		sc->next = sclist;
+
+	sclist = sc;
+}
+
+#endif
+
+static void _add_to_sclist(keystruct * sc)
+{
+#ifndef NANO_TINY
+	static int counter = 0;
+#endif
+	static keystruct *tailsc;
+
+	/* Start the list, or tack on the next item. */
+	if (sclist == NULL)
+		sclist = sc;
+	else
+		tailsc->next = sc;
+	sc->next = NULL;
+
+#ifndef NANO_TINY
+	/* When not the same toggle as the previous one, increment the ID. */
+	if (sc->toggle)
+		sc->ordinal = (tailsc->toggle == sc->toggle) ? counter : ++counter;
+#endif
+
+	tailsc = sc;
+}
+
+static keystruct * _create_sc_keystruct(int menus, const char *scstring, const int keycode,
+						int toggle)
+
+{
+	keystruct *sc = nmalloc(sizeof(keystruct));
+
+	/* Fill in the data. */
+	sc->menus = menus;
+#ifndef NANO_TINY
+	sc->toggle = toggle;
+#endif
+	sc->keystr = scstring;
+	sc->keycode = (keycode ? keycode : keycode_from_string(scstring));
+	sc->func = NULL;
+	sc->pyfunc = NULL;
+
+	return sc;
+}
+#ifdef ENABLE_PLUGINS
+
+/* Add a key combo to the linked list of shortcuts. */
+void add_to_sclist_py(int menus, const char *scstring, const int keycode,
+						PyObject * func, int toggle)
+{
+	keystruct *sc = _create_sc_keystruct(menus, scstring, keycode, toggle);
+
+	sc->pyfunc = func;
+
+	_add_to_sclist_front(sc);
+	//_add_to_sclist(sc);
+}
+
+#endif
+
 /* Add a key combo to the linked list of shortcuts. */
 void add_to_sclist(int menus, const char *scstring, const int keycode,
 						void (*func)(void), int toggle)
 {
+	keystruct *sc = _create_sc_keystruct(menus, scstring, keycode, toggle);
+
+	sc->func = func;
+
+	_add_to_sclist(sc);
+
+#if 0
 	static keystruct *tailsc;
 #ifndef NANO_TINY
 	static int counter = 0;
@@ -450,6 +537,7 @@ void add_to_sclist(int menus, const char *scstring, const int keycode,
 	sc->keycode = (keycode ? keycode : keycode_from_string(scstring));
 
 	tailsc = sc;
+#endif
 }
 
 /* Return the first shortcut in the list of shortcuts that
@@ -536,6 +624,10 @@ functionptrtype interpret(int *keycode)
 			case 'w':
 			case '/':
 				return do_search_forward;
+#ifdef ENABLE_PLUGINS
+			case 'p':
+				return do_plugins;
+#endif
 #ifdef ENABLE_BROWSER
 			case 'g':
 				return goto_dir;
@@ -573,6 +665,10 @@ void shortcut_init(void)
 		N_("Write the current buffer (or the marked region) to disk");
 	const char *readfile_gist =
 		N_("Insert another file into current buffer (or into new buffer)");
+#ifdef ENABLE_PLUGINS
+	const char *plugins_gist =
+		N_("Plugins bar");
+#endif
 	const char *whereis_gist =
 		N_("Search forward for a string or a regular expression");
 	const char *wherewas_gist =
@@ -782,8 +878,14 @@ void shortcut_init(void)
 	add_to_funcs(do_exit, MHELP, close_tag, "x", 0, VIEW);
 #endif
 
+#ifdef ENABLE_PLUGINS
+	add_to_funcs(do_plugins, MMAIN|MHELP,
+		N_("Plugins"), WITHORSANS(plugins_gist), TOGETHER, VIEW);
+#endif
+
 	add_to_funcs(do_search_forward, MMAIN|MHELP,
 		N_("Where Is"), WITHORSANS(whereis_gist), TOGETHER, VIEW);
+
 
 	add_to_funcs(do_replace, MMAIN,
 		N_("Replace"), WITHORSANS(replace_gist), TOGETHER, NOVIEW);
@@ -1206,6 +1308,9 @@ void shortcut_init(void)
 	add_to_sclist(MMAIN, "Ins", KEY_IC, do_insertfile_void, 0);
 	if (!ISSET(PRESERVE))
 		add_to_sclist(MMAIN|MBROWSER|MHELP, "^Q", 0, do_search_backward, 0);
+#ifdef ENABLE_PLUGINS
+	add_to_sclist(MMAIN|MBROWSER|MHELP, "^P", 0, do_plugins, 0);
+#endif
 	add_to_sclist(MMAIN|MBROWSER|MHELP, "^W", 0, do_search_forward, 0);
 	add_to_sclist(MMAIN, "^\\", 0, do_replace, 0);
 	add_to_sclist(MMAIN, "M-R", 0, do_replace, 0);
