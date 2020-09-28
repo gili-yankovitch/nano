@@ -231,7 +231,10 @@ def find_builddefs(makefile):
 	return defs
 
 def parse_source_file(filename, defines):
-	return TranslationUnit.from_source(filename, args = ["-I%s" % os.path.dirname(filename), "-I."] + ["-D%s" % d for d in defines])
+	return TranslationUnit.from_source(filename, args = ["-I%s" % os.path.dirname(filename),
+														"-I%s" % os.path.sep.join((os.path.dirname(filename), "include")),
+														"-I.",
+														"-Iinclude"] + ["-D%s" % d for d in defines])
 
 def map_source_file(filename, node = None):
 	global sources
