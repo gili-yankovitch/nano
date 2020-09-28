@@ -63,40 +63,44 @@ def goto_definition():
 	global cursors
 	global sources
 
-	curfile = pynano.get_current_file()
+	try:
+		curfile = pynano.get_current_file()
 
-	line, col = pynano.get_current_position()
+		line, col = pynano.get_current_position()
 
-	bck_steps.append({"filename": curfile, "line": line, "column": col})
+		bck_steps.append({"filename": curfile, "line": line, "column": col})
 
-	# Call reparse just in case
-	_reparse(curfile)
+		# Call reparse just in case
+		_reparse(curfile)
 
-	if curfile not in cursors:
-		cursors[curfile] = parse_source_file(curfile, builddefs)
-		map_source_file(curfile)
+		if curfile not in cursors:
+			cursors[curfile] = parse_source_file(curfile, builddefs)
+			map_source_file(curfile)
 
-	symbol = _get_symbol(curfile, line, col)
+		symbol = _get_symbol(curfile, line, col)
 
-	if symbol is not None:
-		outputstr = "Symbol(%d, %d): %s - %s (%s)" % (symbol.location.line, symbol.location.column, symbol.spelling, symbol.kind, symbol.spelling in declarations)
+		if symbol is not None:
+			outputstr = "Symbol(%d, %d): %s - %s (%s)" % (symbol.location.line, symbol.location.column, symbol.spelling, symbol.kind, symbol.spelling in declarations)
 
-		if symbol.kind not in decltypes and symbol.spelling in declarations:
-			decl = symbol.referenced
+			if symbol.kind not in decltypes and symbol.spelling in declarations:
+				decl = symbol.referenced
 
-			if decl.kind == CursorKind.FUNCTION_DECL and not decl.is_definition():
-				pynano.output_text("Decl not found. Press ENTER to search in folder...")
+				if decl.kind == CursorKind.FUNCTION_DECL and not decl.is_definition():
+					pynano.output_text("Decl not found. Press ENTER to search in folder...")
 
-				filename = _find_real_funcdef(pynano.get_current_file(), decl)
+					filename = _find_real_funcdef(pynano.get_current_file(), decl)
 
-				# Look again
-				decl = declarations[symbol.spelling]
+					# Look again
+					decl = declarations[symbol.spelling]
 
-			outputstr += " Declared in (%s, %d, %d)" % (decl.location.file.name, decl.location.line, decl.location.column)
+				outputstr += " Declared in (%s, %d, %d)" % (decl.location.file.name, decl.location.line, decl.location.column)
 
-			_goto(decl.location.file.name, decl.location.line, decl.location.column)
+				_goto(decl.location.file.name, decl.location.line, decl.location.column)
 
-	return
+	except Exception as e:
+		pynano.output_text("Error")
+		with open("nano.err", "w") as f:
+			f.write(str(e))
 
 def sha256sum(data):
 	h = hashlib.sha256()
@@ -157,6 +161,9 @@ def _reparse(filename):
 		map_source_file(filename)
 
 def _find_sources(root = ".", files = []):
+	if not os.path.isdir(root):
+		return files
+
 	for f in os.listdir(root):
 		fullpath = os.path.sep.join((root, f))
 
@@ -168,6 +175,9 @@ def _find_sources(root = ".", files = []):
 	return files
 
 def _find_makefile(root = ".", files = []):
+	if not os.path.isdir(root):
+		return files
+
 	for f in os.listdir(root):
 		fullpath = os.path.sep.join((root, f))
 
@@ -277,11 +287,12 @@ def main():
 		builddefs += find_builddefs(m)
 
 	# A parse thread
-	_thread.start_new_thread(parse_open_files, ())
+	#_thread.start_new_thread(parse_open_files, ())
 
 	return
 
 	curfile = "./src/history.c"
+	curfile = "shared.c"
 	cursors[curfile] = parse_source_file(curfile, builddefs)
 	map_source_file(curfile)
 	#symbol = _get_symbol(curfile, 521, 13)
@@ -293,8 +304,10 @@ def main():
 	#print(declarations[symbol.spelling].kind)
 	#print(declarations[symbol.spelling].location.file.name)
 
-	symbol = _get_symbol(curfile, 148, 6)
-	decl = declarations[symbol.spelling]
+	symbol = _get_symbol(curfile, 68, 11)
+	#decl = declarations[symbol.spelling]
+	print(dir(symbol))
+	decl = symbol.referenced
 
 	print(symbol.spelling)
 	print(symbol.kind)
@@ -313,4 +326,8 @@ try:
 except:
 	print("Error setting up plugins")
 
-main()
+try:
+	main()
+except Exception as e:
+	with open("nano.err", "w") as f:
+		f.write(str(e))
