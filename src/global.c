@@ -495,7 +495,6 @@ void add_to_sclist_py(int menus, const char *scstring, const int keycode,
 	sc->pyfunc = func;
 
 	_add_to_sclist_front(sc);
-	//_add_to_sclist(sc);
 }
 
 #endif

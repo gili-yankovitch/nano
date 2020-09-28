@@ -24,6 +24,103 @@ sources = {}
 decltypes = [ getattr(CursorKind, x) for x in filter(lambda x: "_DECL" in x, dir(CursorKind)) ]
 declarations = {}
 
+bck_steps = []
+fwd_steps = []
+
+def plugin_setup():
+	pynano.kb_subscribe("F12", goto_definition)
+	pynano.kb_subscribe("M--", go_back)
+	pynano.kb_subscribe("M-=", go_forward)
+
+def go_back():
+	if len(bck_steps) == 0:
+		return
+
+	location = bck_steps.pop()
+
+	curfile = pynano.get_current_file()
+
+	line, col = pynano.get_current_position()
+
+	fwd_steps.append({"filename": curfile, "line": line, "column": col})
+
+	_goto(location["filename"], location["line"], location["column"])
+
+
+def go_forward():
+	if len(fwd_steps) == 0:
+		return
+
+	location = fwd_steps.pop()
+
+	curfile = pynano.get_current_file()
+
+	line, col = pynano.get_current_position()
+
+	bck_steps.append({"filename": curfile, "line": line, "column": col})
+
+	_goto(location["filename"], location["line"], location["column"])
+
+def goto_definition():
+	global cursors
+	global sources
+
+	curfile = pynano.get_current_file()
+
+	line, col = pynano.get_current_position()
+
+	bck_steps.append({"filename": curfile, "line": line, "column": col})
+
+	# Call reparse just in case
+	_reparse(curfile)
+
+	if curfile not in cursors:
+		cursors[curfile] = parse_source_file(curfile, builddefs)
+		map_source_file(curfile)
+
+	symbol = _get_symbol(curfile, line, col)
+
+	if symbol is not None:
+		outputstr = "Symbol(%d, %d): %s - %s (%s)" % (symbol.location.line, symbol.location.column, symbol.spelling, symbol.kind, symbol.spelling in declarations)
+
+		if symbol.kind not in decltypes and symbol.spelling in declarations:
+			#decl = declarations[symbol.spelling]
+			decl = symbol.referenced
+
+			if decl.kind == CursorKind.FUNCTION_DECL and not decl.is_definition():
+				pynano.output_text("Decl not found. Press ENTER to search in folder...")
+
+				filename = _find_real_funcdef(pynano.get_current_file(), decl)
+
+				# Look again
+				decl = declarations[symbol.spelling]
+
+			outputstr += " Declared in (%s, %d, %d)" % (decl.location.file.name, decl.location.line, decl.location.column)
+
+			_goto(decl.location.file.name, decl.location.line, decl.location.column)
+
+		#pynano.output_text(outputstr)
+
+	return
+
+def sha256sum(data):
+	h = hashlib.sha256()
+	h.update(bytes(str(data), "ascii"))
+	return hexlify(h.digest()).decode()
+
+def _goto(filename, line, column):
+	# Check if file is open in a buffer
+	if filename is not pynano.get_current_file():
+		if filename not in pynano.get_open_buffers():
+			# Open the buffer
+			pynano.file_open(filename)
+		else:
+			# Swap to the file
+			pynano.file_navigate(filename)
+
+	# Go to the line and column
+	pynano.goto_position(line, column)
+
 def _find_real_funcdef(curfile, symbol):
 	global cursors
 	subdir = os.path.dirname(curfile)
@@ -40,11 +137,6 @@ def _find_real_funcdef(curfile, symbol):
 		# Don't have to parse everything...
 		if declarations[symbol.spelling].is_definition():
 			return f
-
-def sha256sum(data):
-	h = hashlib.sha256()
-	h.update(bytes(str(data), "ascii"))
-	return hexlify(h.digest()).decode()
 
 def _reparse(filename):
 	if not pynano.is_modified(filename):
@@ -70,81 +162,6 @@ def _reparse(filename):
 		map_source_file(filename)
 		pynano.output_text("Refreshed")
 
-def goto_definition():
-	global cursors
-	global sources
-
-	curfile = pynano.get_current_file()
-
-	line, col = pynano.get_current_position()
-
-	#pynano.output_text("Is this modified? " + str(pynano.is_modified(curfile)))
-
-	# Call reparse just in case
-	_reparse(curfile)
-
-	if curfile not in cursors:
-		cursors[curfile] = parse_source_file(curfile, builddefs)
-		map_source_file(curfile)
-
-	symbol = _get_symbol(curfile, line, col)
-
-	if symbol is not None:
-		outputstr = "Symbol(%d, %d): %s - %s (%s)" % (symbol.location.line, symbol.location.column, symbol.spelling, symbol.kind, symbol.spelling in declarations)
-
-		if symbol.kind not in decltypes and symbol.spelling in declarations:
-			#decl = declarations[symbol.spelling]
-			decl = symbol.referenced
-
-			if decl.kind == CursorKind.FUNCTION_DECL and not decl.is_definition():
-				pynano.output_text("Decl not found. Press ENTER to search in folder...")
-
-				filename = _find_real_funcdef(pynano.get_current_file(), decl)
-
-				# pynano.output_text("Found real decl in " + str(filename))
-
-				# Look again
-				decl = declarations[symbol.spelling]
-
-			outputstr += " Declared in (%s, %d, %d)" % (decl.location.file.name, decl.location.line, decl.location.column)
-
-			# Check if file is open in a buffer
-			if decl.location.file.name is not pynano.get_current_file():
-				if decl.location.file.name not in pynano.get_open_buffers():
-					# Open the buffer
-					pynano.file_open(decl.location.file.name)
-				else:
-					# Swap to the file
-					pynano.file_navigate(decl.location.file.name)
-
-			# Go to the line and column
-			pynano.goto_position(decl.location.line, decl.location.column)
-		#pynano.output_text(outputstr)
-
-	return
-
-	# Load up the current file
-	with open(curfile, "r") as f:
-		data = f.read()
-
-	pynano.output_text("%d,%d" % (line, col))
-
-	lines = data.split('\n')
-
-	symbols = lines[line - 1].split(' ')
-	#symbol = symbols[col]
-
-	if curfile not in mappedTags:
-		return
-
-	#pynano.output_text(str(mappedTags[curfile].keys()))
-
-	if line in mappedTags[curfile]:
-		pynano.output_text(str(mappedTags[curfile][line]))
-
-def plugin_setup():
-	pynano.kb_subscribe("F12", goto_definition)
-
 def _find_sources(root = ".", files = []):
 	for f in os.listdir(root):
 		fullpath = os.path.sep.join((root, f))
@@ -166,35 +183,6 @@ def _find_makefile(root = ".", files = []):
 			files.append(fullpath)
 
 	return files
-
-def find_builddefs(makefile):
-	defs = []
-
-	with open(makefile, "r") as f:
-		data = f.read()
-
-	for line in data.split("\n"):
-		matches = defs_pattern.findall(line)
-
-		for m in matches:
-			if m not in defs:
-				defs.append(m)
-
-	return defs
-
-def list_includes(node, includes = {}):
-	for child in node.get_children():
-		#print(child.kind)
-		#if child.kind == CursorKind.INCLUSION_DIRECTIVE:
-		if child.kind == CursorKind.FUNCTION_DECL:
-			if child.location.file != None:
-				if child.location.file not in includes:
-					includes[child.location.file] = {}
-				if child.location.line not in includes[child.location.file]:
-					includes[child.location.file][child.location.line] = []
-				includes[child.location.file][child.location.line].append(child.displayname)
-			list_includes(child, includes)
-	return includes
 
 def _get_file(filename, lst = sources):
 	# Find the right filename
@@ -226,6 +214,35 @@ def _get_symbol(filename, line, column):
 			return node
 
 	return None
+
+def find_builddefs(makefile):
+	defs = []
+
+	with open(makefile, "r") as f:
+		data = f.read()
+
+	for line in data.split("\n"):
+		matches = defs_pattern.findall(line)
+
+		for m in matches:
+			if m not in defs:
+				defs.append(m)
+
+	return defs
+
+def list_includes(node, includes = {}):
+	for child in node.get_children():
+		#print(child.kind)
+		#if child.kind == CursorKind.INCLUSION_DIRECTIVE:
+		if child.kind == CursorKind.FUNCTION_DECL:
+			if child.location.file != None:
+				if child.location.file not in includes:
+					includes[child.location.file] = {}
+				if child.location.line not in includes[child.location.file]:
+					includes[child.location.file][child.location.line] = []
+				includes[child.location.file][child.location.line].append(child.displayname)
+			list_includes(child, includes)
+	return includes
 
 def parse_source_file(filename, defines):
 	# print(filename, defines)
