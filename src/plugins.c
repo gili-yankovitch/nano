@@ -2,6 +2,9 @@
 #include <stdbool.h>
 #include <malloc.h>
 #include <ncurses.h>
+
+#ifdef ENABLE_PLUGINS
+
 #include <Python.h>
 
 static char stdout_redirect[] =
@@ -362,6 +365,13 @@ void plugins_init(void)
 	/* Import the pynano module */
 	pynano_module = PyImport_ImportModule("pynano");
 
+	if (!pynano_module)
+	{
+		jot_error(N_("pynano module not installed."));
+
+		return;
+	}
+
 	/* Find the __init__ function */
 	__init__str = PyUnicode_FromString("__init__");
 	pynano__init__ = PyObject_GetAttr(pynano_module, __init__str);
@@ -394,7 +404,7 @@ void load_one_plugin(char * plugin_name)
 	PyObject * module;
 	PyObject * module_name;
 
-	fprintf(stderr, "Importing module %s\r\b", plugin_name);
+	// fprintf(stderr, "Importing module %s\r\b", plugin_name);
 
 	if (!(module = PyImport_ImportModule(plugin_name)))
 	{
@@ -532,3 +542,5 @@ void do_plugins(void)
 		}
 	} while (true);
 }
+
+#endif

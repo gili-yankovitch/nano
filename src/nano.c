@@ -2168,7 +2168,7 @@ int main(int argc, char **argv)
 #endif
 
 #ifdef ENABLE_PLUGINS
-	fprintf(stderr, "Enabling plugins...\n");
+	// fprintf(stderr, "Enabling plugins...\n");
 	plugins_init();
 #endif
 

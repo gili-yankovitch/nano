@@ -480,8 +480,9 @@ static keystruct * _create_sc_keystruct(int menus, const char *scstring, const i
 	sc->keystr = scstring;
 	sc->keycode = (keycode ? keycode : keycode_from_string(scstring));
 	sc->func = NULL;
+#ifdef ENABLE_PLUGINS
 	sc->pyfunc = NULL;
-
+#endif
 	return sc;
 }
 #ifdef ENABLE_PLUGINS

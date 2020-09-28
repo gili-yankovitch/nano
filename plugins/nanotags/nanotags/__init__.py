@@ -4,8 +4,6 @@ import hashlib
 import tempfile
 import _thread
 import pynano
-import ctags
-#from ctags import CTags, TagEntry
 from binascii import hexlify
 import os
 from pprint import pprint
