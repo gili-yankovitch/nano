@@ -344,10 +344,10 @@ fi
 AC_ARG_ENABLE(plugins,
 AS_HELP_STRING([--enable-plugins], [Enable plugins for python extention]))
 if test "x$enable_plugins" = xyes; then
-	AC_CHECK_LIB(python3.5m,	Py_Initialize, [],	[AC_MSG_ERROR([Plugins require python3.5. Please install libpython3.5])])
-	AC_CHECK_HEADER([python3.5m/Python.h], [], [AC_MSG_ERROR([Plugins require python3.5 headers. Please install libpython3.5-dev])])
-	LIBS="$(pkg-config --libs python-3.5m) $LIBS"
-	CPPFLAGS="-DENABLE_PLUGINS $(pkg-config --cflags python-3.5m) $CPPFLAGS"
+	AC_CHECK_LIB(python3.6m,	Py_Initialize, [],	[AC_MSG_ERROR([Plugins require python3.6. Please install libpython3.6])])
+	AC_CHECK_HEADER([python3.6m/Python.h], [], [AC_MSG_ERROR([Plugins require python3.6 headers. Please install libpython3.6-dev])])
+	LIBS="$(pkg-config --libs python-3.6m) $LIBS"
+	CPPFLAGS="-DENABLE_PLUGINS $(pkg-config --cflags python-3.6m) $CPPFLAGS"
 fi
 
 AM_CONDITIONAL(USE_COLOR, test x$color_support = xyes)
